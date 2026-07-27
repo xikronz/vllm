@@ -15,7 +15,18 @@ For [vllm-project/vllm#36037](https://github.com/vllm-project/vllm/issues/36037)
 
 ## Setup on a Lambda Cloud instance
 
-Pick an instance whose GPU count is `tp + draft_gpus` for the config you want to screen — the whole point is costing the extra drafter GPU, so an 8×H100 node screens a TP=4 target with room to spare.
+**Size the instance for `--tp` alone.** SSD is not implemented, so nothing here allocates a drafter GPU: vLLM's drafter is collocated on the target's TP group today. `--draft-gpus` only enters the break-even arithmetic, costing a GPU that a future SSD implementation *would* need.
+
+Choose TP deliberately, because it sets the bar. The threshold is `draft_gpus/(tp+draft_gpus)`, so **SSD gets easier to justify as the target grows**: one extra GPU is proportionally cheaper next to 8 than next to 1.
+
+| Target TP | Break-even draft share @ `p_hit`=1 | @ `p_hit`=0.7 |
+|---|---|---|
+| 1 | 50.0% | 71.4% |
+| 2 | 33.3% | 47.6% |
+| 4 | 20.0% | 28.6% |
+| 8 | 11.1% | 15.9% |
+
+A TP=1 result therefore says nothing about a TP=4 deployment, and vice versa. Screen the configuration you would actually run.
 
 ```bash
 git clone -b ssd-phase0a-screen https://github.com/xikronz/vllm.git && cd vllm
